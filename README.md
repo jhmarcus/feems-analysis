@@ -34,7 +34,7 @@ pip install .
 For eems plotting:
 
 ```
-conda install -c r rpy2=3.4.3 r-devtools=2.0.2 r-rcpp r-rcppeigen=1.0.1 r-raster=2.8_19 r-rgeos=0.5_5 r-sp=1.3_1 r-tidyverse=1.2.1 r-maps=3.3.0 r-rcolorbrewer=1.1_2 r-broom=0.5.2 r-maptools=0.9_5
+conda install -c r rpy2=3.4.3 r-devtools=2.0.2 r-rcpp=1.0.1 r-rcppeigen=0.3.3.5.0 r-raster=2.8_19 r-rgeos=0.5_5 r-sp=1.3_1 r-tidyverse=1.2.1 r-maps=3.3.0 r-rcolorbrewer=1.1_2 r-broom=0.5.2 r-maptools=0.9_5
 
 cd src/ 
 git clone https://github.com/dipetkov/reemsplots2

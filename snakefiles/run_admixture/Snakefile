@@ -1,0 +1,54 @@
+#!python
+import glob
+import os
+import pandas as pd
+import numpy as np
+import yaml
+
+
+# GLOBAL
+N_REP = 5
+MAX_K = 10
+
+
+# output files/folders
+qs = []
+ps = []
+dataset_paths = glob.glob("data/preprocessed/*")
+for dataset_path in dataset_paths:
+  dataset = os.path.basename(dataset_path)
+  bed_path = glob.glob("{}/*.bed".format(dataset_path))[0]
+  prefix = os.path.basename(bed_path).split(".")[0]
+  for k in range(2, MAX_K):
+    for r in range(N_REP):
+      qs.append("output/admixture/{}/{}.K{}r{}.Q".format(dataset, prefix, k, r + 1))
+      ps.append("output/admixture/{}/{}.K{}r{}.P".format(dataset, prefix, k, r + 1))
+
+
+rule run_admixture_all:
+  """Dummy rule to run the admixture pipeline
+  """
+  input:
+    qs,
+    ps
+
+
+rule run_admixture:
+  """Runs admixture on a dataset
+  """
+  input:
+    bed = "data/preprocessed/{dataset}/{prefix}.bed"
+  params:
+    K = "{K}",
+    r = "{r}",
+    q = "./{prefix}.{K}.Q",
+    p = "./{prefix}.{K}.P"
+  output:
+    q="output/admixture/{dataset}/{prefix}.K{K}r{r}.Q",
+    p="output/admixture/{dataset}/{prefix}.K{K}r{r}.P"
+  benchmark:
+    "output/benchmark/admixture/{dataset}/{prefix}.K{K}r{r}.txt"
+  run:
+    shell("admixture -s ${{RANDOM}} {input.bed} {params.K} -j8")
+    shell("mv {params.p} {output.p}")
+    shell("mv {params.q} {output.q}")

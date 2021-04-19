@@ -1,0 +1,106 @@
+#!python
+import numpy as np
+import sys
+sys.path.append("scripts")
+from coalescent_sim import setup_graph, simulate_genotypes 
+
+# GLOBAL
+N_REP = 5
+
+# genotype params
+CHROM_LENGTH = 1
+MU = 1e-3
+N_E = 1
+N_SAMPLES_PER_NODE = 15
+TARGET_N_SNPS = 20000
+DESIGN_DICT = {
+               "nonmissing": {"barrier_prob": .5, "corridor_left_prob": .5, "corridor_right_prob": .5, "sample_prob": 1.0},
+               "missingatrandom": {"barrier_prob": .5, "corridor_left_prob": .5, "corridor_right_prob": .5, "sample_prob": .2},
+               "corridorbiased": {"barrier_prob": 0.0, "corridor_left_prob": .5, "corridor_right_prob": .5, "sample_prob": 1.0},
+               "rightbiased": {"barrier_prob": .5, "corridor_left_prob": 0.0, "corridor_right_prob": .5, "sample_prob": 1.0}
+              }
+
+# graph params
+N_PRINT = 100
+N_ROW = 8
+N_COL = 12
+BARRIER_STARTPT = 2.5
+BARRIER_ENDPT = 8.5
+SCENARIO_DICT = {
+                 "ibdiso": {"barrier_w": 1.0, "corridor_w": 1.0, "anistropy_scaler": 1},
+                 "ibdaniso": {"barrier_w": 1.0, "corridor_w": 1.0, "anistropy_scaler": 5},
+                 "weakaniso": {"barrier_w": 1.0, "corridor_w": 1.0, "anistropy_scaler": .75},
+                 "hetiso": {"barrier_w": .1, "corridor_w": 1.0, "anistropy_scaler": 1},
+                 "weakhetiso": {"barrier_w": .75, "corridor_w": 1.0, "anistropy_scaler": 1},
+                 "hetaniso": {"barrier_w": .1, "corridor_w": 1.0,  "anistropy_scaler": 5},
+                }
+
+# output files
+genotypes = []
+edges = []
+grid = []
+coord = []
+for rep in range(N_REP):
+  for scenario in SCENARIO_DICT.keys():
+    for design in DESIGN_DICT.keys():
+      genotypes.append("output/simulations/{}_{}_rep{}/genotypes.txt".format(scenario, design, rep))
+      edges.append("output/simulations/{}_{}_rep{}/edges.txt".format(scenario, design, rep))
+      grid.append("output/simulations/{}_{}_rep{}/grid.txt".format(scenario, design, rep))
+      coord.append("output/simulations/{}_{}_rep{}/coord.txt".format(scenario, design, rep))
+
+
+rule run_simulations_all:
+  """Dummy rule to run simple coalescent simulations
+  """
+  input:
+    genotypes,
+    edges,
+    grid,
+    coord
+
+
+rule run_simulations:
+  """Runs the coalescent simulations
+  """
+  input:
+  params:
+    anisotropy_scaler=lambda wc: SCENARIO_DICT[wc.scenario]["anistropy_scaler"],
+    barrier_w=lambda wc: SCENARIO_DICT[wc.scenario]["barrier_w"], 
+    corridor_w=lambda wc: SCENARIO_DICT[wc.scenario]["corridor_w"],
+    barrier_prob=lambda wc: DESIGN_DICT[wc.design]["barrier_prob"],
+    corridor_left_prob=lambda wc: DESIGN_DICT[wc.design]["corridor_left_prob"],
+    corridor_right_prob=lambda wc: DESIGN_DICT[wc.design]["corridor_right_prob"],
+    sample_prob=lambda wc: DESIGN_DICT[wc.design]["sample_prob"]
+  output:
+    genotypes="output/simulations/{scenario}_{design}_rep{rep}/genotypes.txt",
+    edges="output/simulations/{scenario}_{design}_rep{rep}/edges.txt",
+    grid="output/simulations/{scenario}_{design}_rep{rep}/grid.txt",
+    coord="output/simulations/{scenario}_{design}_rep{rep}/coord.txt"
+  run:
+    # setup the graph
+    graph, coord, grid, edges = setup_graph(n_rows=N_ROW, 
+                                            n_columns=N_COL, 
+                                            barrier_startpt=BARRIER_STARTPT, 
+                                            barrier_endpt=BARRIER_ENDPT,
+                                            n_samples_per_node=N_SAMPLES_PER_NODE,
+                                            anisotropy_scaler=params.anisotropy_scaler,
+                                            barrier_w=params.barrier_w, 
+                                            corridor_w=params.corridor_w,
+                                            barrier_prob=params.barrier_prob, 
+                                            corridor_left_prob=params.corridor_left_prob,
+                                            corridor_right_prob=params.corridor_right_prob,
+                                            sample_prob=params.sample_prob)
+    
+    # setup genotypes
+    genotypes = simulate_genotypes(graph, 
+                                   chrom_length=CHROM_LENGTH, 
+                                   mu=MU, 
+                                   n_e=N_E, 
+                                   target_n_snps=TARGET_N_SNPS, 
+                                   n_print=N_PRINT)
+
+    # save output
+    np.savetxt(output.genotypes, genotypes)
+    np.savetxt(output.coord, coord)
+    np.savetxt(output.grid, grid)
+    np.savetxt(output.edges, edges)

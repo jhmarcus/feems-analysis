@@ -1,0 +1,68 @@
+{
+	"__default__":
+	{
+	    "time" : "2:00:00",
+        "mem" : "1G",
+        "n" : 1,
+        "tasks" : 1,
+        "name" : "{rule}-{wildcards}",
+        "logfile": "output/log/snake-{rule}-{wildcards}-%j.out",
+        "email": "jhmarcus@uchicago.edu",
+        "emailtype": "ALL"
+    },
+	"prepare_eems":
+	{
+	    "time" : "2:00:00",
+        "mem" : "4G",
+        "n" : 1,
+        "tasks" : 1,
+        "name" : "{rule}-{wildcards}",
+        "logfile": "output/logs/snake-{rule}-{wildcards}-%j.out",
+        "email": "jhmarcus@uchicago.edu",
+        "emailtype": "ALL"
+    },
+	"run_eems":
+	{
+	    "time" : "35:00:00",
+        "mem" : "15G",
+        "n" : 1,
+        "tasks" : 1,
+        "name" : "{rule}-{wildcards}",
+        "logfile": "output/logs/snake-{rule}-{wildcards}-%j.out",
+        "email": "jhmarcus@uchicago.edu",
+        "emailtype": "ALL"
+    },
+	"viz_eems":
+	{
+	    "time" : "2:00:00",
+        "mem" : "4G",
+        "n" : 1,
+        "tasks" : 1,
+        "name" : "{rule}-{wildcards}",
+        "logfile": "output/logs/snake-{rule}-{wildcards}-%j.out",
+        "email": "jhmarcus@uchicago.edu",
+        "emailtype": "ALL"
+    },
+	"run_admixture":
+	{
+	    "time" : "48:00:00",
+        "mem" : "15G",
+        "n" : 1,
+        "tasks" : 1,
+        "name" : "{rule}-{wildcards}",
+        "logfile": "output/logs/snake-{rule}-{wildcards}-%j.out",
+        "email": "jhmarcus@uchicago.edu",
+        "emailtype": "ALL"
+    },
+	"run_simulations":
+	{
+	    "time" : "15:00:00",
+        "mem" : "4G",
+        "n" : 1,
+        "tasks" : 1,
+        "name" : "{rule}-{wildcards}",
+        "logfile": "output/logs/snake-{rule}-{wildcards}-%j.out",
+        "email": "jhmarcus@uchicago.edu",
+        "emailtype": "ALL"
+    }
+}

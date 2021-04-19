@@ -1,0 +1,226 @@
+#!python
+import glob
+import os
+import pandas as pd
+import numpy as np
+import yaml
+from snakemake.utils import R
+import sys
+sys.path.append("scripts/feems_vw/")
+from utils import prepare_input
+
+
+# GLOBAL
+EEMS = "/project2/jnovembre/software/eems/runeems_snps/src/runeems_snps"
+
+# 2000k draws from the posterior
+MCMC_ITER = 40000000
+BURNIN_ITER = 1000000 
+THIN_ITER = 20000 
+N_REP = 5
+
+# output files/folders
+demes = []
+edges = []
+ipmap = []
+eems_params = []
+eems_mrates = []
+mrates01_files = []
+mrates02_files = []
+qrates01_files = []
+trace_files = []
+rdist01_files = []
+rdist02_files = []
+rdist03_files = []
+
+# output files/folders for each dataset
+dataset_paths = glob.glob("data/preprocessed/*")
+for dataset_path in dataset_paths:
+
+  # get the dataset name
+  dataset = os.path.basename(dataset_path)
+
+  # read the grid densities for this dataset
+  with open("data/preprocessed/{}/params.yml".format(dataset), "r") as f:    
+    par = yaml.full_load(f)
+    densities = par["densities"]
+
+  # create outputs for the densities
+  for dens in densities:
+    for i in range(N_REP):
+      # setup eems input files
+      edges.append("output/eems/{}/rep{}_dens{}/{}.edges".format(dataset, i, dens, dataset))
+      demes.append("output/eems/{}/rep{}_dens{}/{}.demes".format(dataset, i, dens, dataset))
+      ipmap.append("output/eems/{}/rep{}_dens{}/{}.ipmap".format(dataset, i, dens, dataset))
+
+      # eems
+      eems_params.append("output/eems/{}/rep{}_dens{}.ini".format(dataset, i, dens))
+      eems_mrates.append("output/eems/{}/rep{}_dens{}/mcmcmrates.txt".format(dataset, i, dens))
+      
+      # viz
+      mrates01_files.append("output/eems_viz/{}/rep{}_dens{}/mrates01.pdf".format(dataset, i, dens))
+      mrates02_files.append("output/eems_viz/{}/rep{}_dens{}/mrates02.pdf".format(dataset, i, dens))
+      qrates01_files.append("output/eems_viz/{}/rep{}_dens{}/qrates01.pdf".format(dataset, i, dens))
+      trace_files.append("output/eems_viz/{}/rep{}_dens{}/trace.pdf".format(dataset, i, dens))
+      rdist01_files.append("output/eems_viz/{}/rep{}_dens{}/rdist01.pdf".format(dataset, i, dens))
+      rdist02_files.append("output/eems_viz/{}/rep{}_dens{}/rdist02.pdf".format(dataset, i, dens))
+      rdist03_files.append("output/eems_viz/{}/rep{}_dens{}/rdist03.pdf".format(dataset, i, dens))
+      
+
+rule run_eems_all:
+  """Dummy rule to run the eems pipeline
+  """
+  input:
+    demes,
+    edges,
+    ipmap,
+    eems_params,
+    eems_mrates,
+    mrates01_files,
+    mrates02_files,
+    qrates01_files,
+    trace_files,
+    rdist01_files,
+    rdist02_files,
+    rdist03_files
+
+
+rule prepare_eems:
+  """Prepares eems inputs
+  """
+  input:
+    coord = "data/preprocessed/{dataset}/{dataset}.coord",
+    outer = "data/preprocessed/{dataset}/{dataset}.outer",
+    grid = "data/grids/grid_{dens}.shp",
+    params = "data/preprocessed/{dataset}/params.yml"
+  params:
+    dataset = "{dataset}"
+  output:
+    demes = "output/eems/{dataset}/rep{rep}_dens{dens}/{dataset}.demes",
+    edges = "output/eems/{dataset}/rep{rep}_dens{dens}/{dataset}.edges",
+    ipmap = "output/eems/{dataset}/rep{rep}_dens{dens}/{dataset}.ipmap"
+  run:
+    # read graph params
+    with open(input.params, "r") as f:    
+      par = yaml.full_load(f)
+    translated = par["translated"]
+   
+    # create the eems inputs
+    coord = np.loadtxt(input.coord)
+    outer = np.loadtxt(input.outer)
+    outer, edges, demes, ipmap = prepare_input(coord, 
+                                               input.grid,
+                                               translated, 
+                                               0, 
+                                               outer)
+    
+    # save the output
+    np.savetxt(output.demes, demes)
+    np.savetxt(output.edges, edges)
+    np.savetxt(output.ipmap, ipmap)
+    
+
+rule run_eems:
+  """Runs eems on a dataset
+  """
+  input:
+    eems_input = "data/preprocessed/{dataset}",
+    demes = "output/eems/{dataset}/rep{rep}_dens{dens}/{dataset}.demes",
+    edges = "output/eems/{dataset}/rep{rep}_dens{dens}/{dataset}.edges",
+    ipmap = "output/eems/{dataset}/rep{rep}_dens{dens}/{dataset}.ipmap"
+  params:
+    dataset = "{dataset}",
+    eems_folder = "output/eems/{dataset}/rep{rep}_dens{dens}"
+  output:
+    eems_params = "output/eems/{dataset}/rep{rep}_dens{dens}.ini", 
+    eems_mrates = "output/eems/{dataset}/rep{rep}_dens{dens}/mcmcmrates.txt",
+  benchmark: "output/benchmark/eems/{dataset}/rep{rep}_dens{dens}.benchmark.txt"
+  run:
+    # random seed for eems
+    seed = np.random.randint(1e7)
+
+    # read number of snps and individuals from params
+    with open("data/preprocessed/{}/params.yml".format(params.dataset), "r") as f:    
+      par = yaml.full_load(f)
+      p = par["n_snps"]
+      n = par["n_ind"]
+    
+    with open(output.eems_params, "w") as f:
+      f.write("datapath = data/preprocessed/{}/{}\n".format(params.dataset, params.dataset))
+      f.write("gridpath = {}/{}\n".format(params.eems_folder, params.dataset))
+      f.write("mcmcpath = {}\n".format(params.eems_folder))
+      f.write("nIndiv = {}\n".format(n))
+      f.write("nSites = {}\n".format(p))
+      f.write("diploid = true\n")
+      f.write("numMCMCIter = {}\n".format(MCMC_ITER))
+      f.write("numBurnIter = {}\n".format(BURNIN_ITER))
+      f.write("numThinIter = {}\n".format(THIN_ITER))
+      f.write("nDemes = 2")
+
+    # run eems using the params defined above
+    shell("{} --params {} --seed {}".format(EEMS, output.eems_params, seed))
+
+
+rule viz_eems:
+  """Makes eems plots
+  """
+  input:
+    coord = "data/preprocessed/{dataset}/{dataset}.coord",
+    mrates = "output/eems/{dataset}/rep{rep}_dens{dens}/mcmcmrates.txt"
+  params:
+    mcmcpath = "output/eems/{dataset}/rep{rep}_dens{dens}"
+  output:
+    mrates01 = "output/eems_viz/{dataset}/rep{rep}_dens{dens}/mrates01.pdf",
+    mrates02 = "output/eems_viz/{dataset}/rep{rep}_dens{dens}/mrates02.pdf",
+    qrates01 = "output/eems_viz/{dataset}/rep{rep}_dens{dens}/qrates01.pdf",
+    trace = "output/eems_viz/{dataset}/rep{rep}_dens{dens}/trace.pdf",
+    rdist01 = "output/eems_viz/{dataset}/rep{rep}_dens{dens}/rdist01.pdf",
+    rdist02 = "output/eems_viz/{dataset}/rep{rep}_dens{dens}/rdist02.pdf",
+    rdist03 = "output/eems_viz/{dataset}/rep{rep}_dens{dens}/rdist03.pdf"
+  run:
+    R("""
+      library(ggplot2)      
+      library(rworldmap)    
+      library(broom)    
+      library(RColorBrewer) 
+      library(reemsplots2)
+
+      # get coords
+      coord <- read.table('{input.coord}', header = FALSE)
+      colnames(coord) <- c('long', 'lat')
+      
+      # get plots
+      plots <- make_eems_plots('{params.mcmcpath}', longlat = TRUE)
+
+      # get map
+      map <- rworldmap::getMap(resolution = 'high')
+      map <- broom::tidy(map)
+
+      # mrates01
+      p_m <- plots$mrates01 + 
+             geom_path(data = map, aes(x = long, y = lat, group = group), color = '#888888', size = 0.5) +
+             coord_quickmap() + 
+             geom_point(data = coord, aes(x = long, y = lat), shape = 1)
+             
+      
+      # qrates01
+      p_q <- plots$qrates01 + 
+             geom_path(data = map, aes(x = long, y = lat, group = group), color = '#888888', size = 0.5) +
+             coord_quickmap() +
+             geom_point(data = coord, aes(x = long, y = lat), shape = 1)
+             
+      p_m2 <- plots$mrates02 +
+              geom_path(data = map, aes(x = long, y = lat, group = group), color = '#888888', size = 0.5) +
+              coord_quickmap() +
+              geom_point(data = coord, aes(x = long, y = lat), shape = 1)
+
+      # save plots
+      ggsave('{output.mrates01}', p_m)
+      ggsave('{output.mrates02}', p_m2)
+      ggsave('{output.qrates01}', p_q)
+      ggsave('{output.trace}', plots$pilogl01)
+      ggsave('{output.rdist01}', plots$rdist01)
+      ggsave('{output.rdist02}', plots$rdist02)
+      ggsave('{output.rdist03}', plots$rdist03)
+      """)
+

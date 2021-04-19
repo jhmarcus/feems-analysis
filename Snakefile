@@ -5,5 +5,5 @@ include: "snakefiles/run_admixture/Snakefile"
 include: "snakefiles/run_simulations/Snakefile"
 
 rule none:
-    input: 'Snakefile'
-    run: print("feems-paper")
+    input: "Snakefile"
+    run: print("feems-analysis")

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source activate feems_env
+source activate feems_analysis_e
 module load eigen
 
 snakemake \

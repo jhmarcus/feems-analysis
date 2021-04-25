@@ -151,3 +151,6 @@ nb-log*
 *.code-workspace
 
 bin/
+*/.ipynb_checkpoints/
+.ipynb_checkpoints/
+

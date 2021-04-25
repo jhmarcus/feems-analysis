@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --time=03:00:00
+#SBATCH --time=04:00:00
 #SBATCH --partition=jnovembre
 #SBATCH --account=pi-jnovembre
 #SBATCH --nodes=1

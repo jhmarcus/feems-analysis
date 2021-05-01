@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --time=04:00:00
-#SBATCH --partition=jnovembre
-#SBATCH --account=pi-jnovembre
+#SBATCH --partition=mstephens
+#SBATCH --account=pi-mstephens
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem-per-cpu=5G

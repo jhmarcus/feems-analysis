@@ -16,3 +16,5 @@ snakemake==6.1.1
 PyYAML==5.4.1
 xlrd==2.0.1
 msprime==1.0.0
+statsmodels==0.12.2
+openpyxl==3.0.7
